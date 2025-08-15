@@ -1,0 +1,16 @@
+[build]
+  # Garante build do Nest antes de empacotar a Function
+  command = "npm ci && npm run build"
+  publish = "public"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+  # inclui os arquivos compilados do Nest dentro da function
+  included_files = ["dist/**"]
+
+# Roteia /api/* -> Function
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
