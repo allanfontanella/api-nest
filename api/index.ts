@@ -4,6 +4,10 @@ import { AppModule } from '../src/app.module';
 import { ExpressAdapter } from '@nestjs/platform-express';
 import serverlessExpress from '@vendia/serverless-express';
 
+const express = require('express');
+const { json, urlencoded } = require('express');
+
+
 // Copiado do seu main.ts
 function parseOrigins() {
   const raw = process.env.FRONTEND_URLS ?? '';
