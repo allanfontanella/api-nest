@@ -1,6 +1,5 @@
 [build]
-  # Garante build do Nest antes de empacotar a Function
-  command = "npm ci && npm run build"
+  command = "npm ci --include=dev && npm run build"
   publish = "public"
 
 [functions]
