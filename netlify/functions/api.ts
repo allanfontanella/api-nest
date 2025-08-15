@@ -1,19 +1,14 @@
-import express, { json, urlencoded } from 'express';
-import { Handler } from '@netlify/functions';
-import { NestFactory } from '@nestjs/core';
-import { ExpressAdapter } from '@nestjs/platform-express';
-import serverlessExpress from '@vendia/serverless-express';
+// netlify/functions/api.js
+const express = require('express');
+const { json, urlencoded } = require('express');
+const serverlessExpress = require('@vendia/serverless-express');
+const { NestFactory } = require('@nestjs/core');
+const { ExpressAdapter } = require('@nestjs/platform-express');
 
-// ⚠️ Importa o AppModule compilado pelo tsc
-// (de netlify/functions/ até dist/* na raiz = ../../dist/*)
-import { AppModule } from '../../dist/app.module';
+// Importa o AppModule já COMPILADO pelo Nest (CJS)
+const { AppModule } = require('../../dist/app.module');
 
-function parseOrigins() {
-  const raw = process.env.FRONTEND_URLS ?? '';
-  return raw.split(',').map(s => s.trim()).filter(Boolean);
-}
-
-let cached: ReturnType<typeof serverlessExpress> | null = null;
+let cached;
 
 async function bootstrap() {
   const expressApp = express();
@@ -22,26 +17,14 @@ async function bootstrap() {
 
   const app = await NestFactory.create(AppModule, new ExpressAdapter(expressApp));
 
-  const allowlist = parseOrigins();
-  app.enableCors({
-    origin(origin, cb) {
-      if (!origin) return cb(null, true);
-      if (allowlist.length === 0) return cb(null, true);
-      if (allowlist.includes(origin)) return cb(null, true);
-      return cb(new Error(`CORS: origin não permitido: ${origin}`), false);
-    },
-    methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
-    allowedHeaders: ['Content-Type','Authorization','Accept'],
-    credentials: true,
-    maxAge: 86400,
-  });
+  // Se você usa CORS no main.ts, replique aqui:
+  // app.enableCors({ ... });
 
-  // Importante: em serverless NÃO usa app.listen()
-  await app.init();
+  await app.init(); // NUNCA usar app.listen() em serverless
   return serverlessExpress({ app: expressApp });
 }
 
-export const handler: Handler = async (event, context) => {
+exports.handler = async (event, context) => {
   if (!cached) cached = await bootstrap();
   return cached(event, context);
 };
