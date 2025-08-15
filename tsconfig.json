@@ -2,15 +2,25 @@
   "compilerOptions": {
     "module": "commonjs",
     "moduleResolution": "node",
+
     "target": "ES2022",
     "outDir": "./dist",
     "sourceMap": true,
+
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
+
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
+
     "skipLibCheck": true,
-    "strictNullChecks": true
+    "strictNullChecks": true,
+
+    "baseUrl": ".",
+    "paths": {
+      "src/*": ["src/*"]      // mantém seus imports 'src/...'
+      // (Se preferir '@/*': "paths": { "@/*": ["src/*"] } )
+    }
   },
   "include": ["src/**/*.ts"]
 }
