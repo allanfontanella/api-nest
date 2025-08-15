@@ -4,8 +4,8 @@ import { AppModule } from '../src/app.module';
 import { ExpressAdapter } from '@nestjs/platform-express';
 import serverlessExpress from '@vendia/serverless-express';
 
-const express = require('express');
-const { json, urlencoded } = require('express');
+import express, { json, urlencoded } from 'express';
+
 
 
 // Copiado do seu main.ts
