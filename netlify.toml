@@ -1,14 +1,24 @@
+# netlify.toml
 [build]
   command = "npm ci --include=dev && npm run build"
   publish = "public"
 
 [functions]
   directory = "netlify/functions"
-  node_bundler = "esbuild"
-  # inclui os arquivos compilados do Nest dentro da function
+  node_bundler = "zisi"
+  # garanta que estes módulos vão dentro do zip da função
+  external_node_modules = [
+    "express",
+    "@vendia/serverless-express",
+    "@nestjs/core",
+    "@nestjs/platform-express",
+    "reflect-metadata",
+    "rxjs",
+    "typeorm",
+    "mysql2"
+  ]
   included_files = ["dist/**"]
 
-# Roteia /api/* -> Function
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/api/:splat"
