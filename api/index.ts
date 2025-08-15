@@ -2,10 +2,16 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from '../src/app.module';
 import { ExpressAdapter } from '@nestjs/platform-express';
-import * as express from 'express';
 import serverlessExpress from '@vendia/serverless-express';
-import { json, urlencoded } from 'express';
 
+// evita o problema de namespace import
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const express = require('express');
+const { json, urlencoded } = require('express');
+
+const expressApp = express();
+expressApp.use(json({ limit: '50mb' }));
+expressApp.use(urlencoded({ extended: true, limit: '50mb' }));
 // Copiado do seu main.ts
 function parseOrigins() {
   const raw = process.env.FRONTEND_URLS ?? '';
