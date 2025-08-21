@@ -1,0 +1,9 @@
+---
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/seminovosfontane/nodeapp
+    - /bin/rm -rf $DEPLOYPATH/*
+    - /bin/cp -R * $DEPLOYPATH
+    - cd $DEPLOYPATH
+    - /bin/npm install --production
+    - /bin/npm run build
