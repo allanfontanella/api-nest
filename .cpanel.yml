@@ -1,9 +1,26 @@
 ---
 deployment:
   tasks:
+    # Definir o diretório onde a aplicação ficará no servidor
     - export DEPLOYPATH=/home/seminovosfontane/nodeapp
+
+    # Remover arquivos antigos antes de copiar
     - /bin/rm -rf $DEPLOYPATH/*
+
+    # Copiar os arquivos do repositório para o diretório de deploy
     - /bin/cp -R * $DEPLOYPATH
+
+    # Entrar no diretório de deploy
     - cd $DEPLOYPATH
+
+    # Adicionar o Node.js do cPanel ao PATH (ajuste versão conforme disponível)
+    - export PATH=/opt/cpanel/ea-nodejs20/bin/:$PATH
+
+    # Instalar dependências de produção
     - /bin/npm install --production
+
+    # Compilar o projeto (Nest.js)
     - /bin/npm run build
+
+    # Reiniciar a aplicação (se usar PM2, melhor ainda)
+    - /bin/npx pm2 restart all || /bin/npx pm2 start dist/main.js --name "meuapp"
