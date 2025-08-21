@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { Veiculo } from './entities/veiculo.entity';
-import { Marca, Modelo,  Opcional, VeiculoOpcional } from './entities';
+import { Marca, Modelo, Opcional, VeiculoOpcional } from './entities';
 import { Vendedor } from 'src/vendedor/vendedor.entity';
 
 @Injectable()
@@ -21,7 +21,7 @@ export class VeiculoService {
     @InjectRepository(Opcional) private opcionaisRepo: Repository<Opcional>,
     @InjectRepository(VeiculoOpcional) private veiculoOpcional: Repository<VeiculoOpcional>,
     @InjectRepository(Vendedor) private vendedoresRepo: Repository<Vendedor>,
-  ) {}
+  ) { }
 
   async create(body: any) {
     const v = this.repo.create({
@@ -34,7 +34,7 @@ export class VeiculoService {
       valor: body.valor ?? null,
       tipoVeiculo: body.tipoVeiculo ?? 'USADO',
       status: body.status ?? 'ATIVO',
-  
+
       // << AGORA SALVA TAMBÉM ESTES
       tracao: body.tracao ?? null,
       cor: body.cor ?? null,
@@ -79,7 +79,7 @@ export class VeiculoService {
       : {};
     return this.repo.find({
       where: where as any,
-      relations: ['marca', 'modelo', 'opcionais', 'opcionais.opcional', 'imagens','vendedores'],
+      relations: ['marca', 'modelo', 'opcionais', 'opcionais.opcional', 'imagens', 'vendedores'],
       order: { criadoEm: 'DESC' },
     });
   }
@@ -97,13 +97,13 @@ export class VeiculoService {
     const v = await this.repo.findOne({
       where: { id },
       relations: [
-        'marca','modelo',
-        'opcionais','opcionais.opcional','imagens',
+        'marca', 'modelo',
+        'opcionais', 'opcionais.opcional', 'imagens',
         'vendedores',
       ],
     });
     if (!v) throw new NotFoundException('Veículo não encontrado');
-  
+
     if (!v.vendedores || v.vendedores.length === 0) {
       const ativos = await this.vendedoresRepo.find({
         // where: { status: 'ativo' },
@@ -113,7 +113,7 @@ export class VeiculoService {
 
       return { ...v, vendedores: ativos };
     }
-  
+
     return v;
   }
 
@@ -129,7 +129,7 @@ export class VeiculoService {
       valor: body.valor ?? v.valor,
       tipoVeiculo: body.tipoVeiculo ?? v.tipoVeiculo,
       status: body.status ?? v.status,
-  
+
       // << incluir strings também no update
       tracao: body.tracao ?? v.tracao,
       cor: body.cor ?? v.cor,
@@ -177,7 +177,6 @@ export class VeiculoService {
     await this.repo.remove(v);
     return { deleted: true };
   }
-
   async search(params: {
     q?: string;
     marcaId?: number;
@@ -186,9 +185,11 @@ export class VeiculoService {
     page?: number;
     limit?: number;
     order?: 'recent' | 'price_asc' | 'price_desc';
+    opcionaisIds?: number[];   // <<< novo
   }) {
     const page = Math.max(1, Number(params.page) || 1);
     const limit = Math.min(100, Math.max(1, Number(params.limit) || 12));
+
     const qb = this.repo
       .createQueryBuilder('v')
       .leftJoinAndSelect('v.marca', 'marca')
@@ -198,51 +199,55 @@ export class VeiculoService {
       .leftJoinAndSelect('v.imagens', 'imagens')
       .leftJoinAndSelect('v.vendedores', 'vendedores')
       .where('1=1');
-  
-      if (params.ano) {
-        qb.andWhere('v.modeloAno = :modeloAno or v.fabricacaoAno = :fabricacaoAno', { modeloAno: params.ano, fabricacaoAno: params.ano });
-        // qb.andWhere('v.fabricacaoAno = :fabricacaoAno', { fabricacaoAno: params.ano });
-      }
-      if (params.marcaId) {
-        qb.andWhere('marca.id = :marcaId', { marcaId: params.marcaId });
-      }      
+
+    // filtros existentes ...
+    if (params.ano) {
+      qb.andWhere('(v.modeloAno = :ano OR v.fabricacaoAno = :ano)', { ano: params.ano });
+    }
+    if (params.marcaId) {
+      qb.andWhere('marca.id = :marcaId', { marcaId: params.marcaId });
+    }
     if (params.modeloId) {
       qb.andWhere('modelo.id = :modeloId', { modeloId: params.modeloId });
     }
-  
+
+    // >>> NOVO: filtro por opcionais
+    if (params.opcionaisIds?.length) {
+      qb.andWhere('opcional.id IN (:...ops)', { ops: params.opcionaisIds });
+      // 🔹 isso retorna veículos que tenham PELO MENOS UM dos opcionais informados
+      // se quiser obrigar que tenham TODOS os opcionais, me fala que ajusto com groupBy + having
+    }
+
+    // filtro por texto (q) já existente...
     if (params.q && params.q.trim()) {
       const q = `%${params.q.trim()}%`;
       qb.andWhere(
-        `
-        (
-          marca.nome LIKE :q OR
-          modelo.nome LIKE :q OR
-          opcional.nome LIKE :q OR
-  
-          v.combustivel LIKE :q OR
-          v.cambio      LIKE :q OR
-          v.tracao      LIKE :q OR
-          v.cor         LIKE :q OR
-          v.freio       LIKE :q OR
-          v.rodas       LIKE :q OR
-          v.pneu        LIKE :q OR
-          v.tipo        LIKE :q OR
-          v.carroceria  LIKE :q OR
-          v.tipoVeiculo LIKE :q OR
-          v.status      LIKE :q OR
-  
-          CAST(v.km            AS CHAR) LIKE :q OR
-          CAST(v.modeloAno     AS CHAR) LIKE :q OR
-          CAST(v.fabricacaoAno AS CHAR) LIKE :q OR
-          CAST(v.marchas       AS CHAR) LIKE :q OR
-          CAST(v.valor         AS CHAR) LIKE :q
-        )
-        `,
+        `(
+        marca.nome LIKE :q OR
+        modelo.nome LIKE :q OR
+        opcional.nome LIKE :q OR
+        v.combustivel LIKE :q OR
+        v.cambio      LIKE :q OR
+        v.tracao      LIKE :q OR
+        v.cor         LIKE :q OR
+        v.freio       LIKE :q OR
+        v.rodas       LIKE :q OR
+        v.pneu        LIKE :q OR
+        v.tipo        LIKE :q OR
+        v.carroceria  LIKE :q OR
+        v.tipoVeiculo LIKE :q OR
+        v.status      LIKE :q OR
+        CAST(v.km            AS CHAR) LIKE :q OR
+        CAST(v.modeloAno     AS CHAR) LIKE :q OR
+        CAST(v.fabricacaoAno AS CHAR) LIKE :q OR
+        CAST(v.marchas       AS CHAR) LIKE :q OR
+        CAST(v.valor         AS CHAR) LIKE :q
+      )`,
         { q },
       );
     }
-  
-    // ordenação
+
+    // ordenação existente...
     switch (params.order) {
       case 'price_asc':
         qb.orderBy('v.valor', 'ASC');
@@ -251,28 +256,201 @@ export class VeiculoService {
         qb.orderBy('v.valor', 'DESC');
         break;
       default:
-        qb.orderBy('v.criadoEm', 'DESC'); // recent
+        qb.orderBy('v.criadoEm', 'DESC');
     }
-  
-    qb.distinct(true) // evita duplicado por join com opcionais
-      .skip((page - 1) * limit)
-      .take(limit);
-  
+
+    qb.distinct(true).skip((page - 1) * limit).take(limit);
+
     const [rows, total] = await qb.getManyAndCount();
-  
+
     return {
       data: rows,
-      sql: qb.getSql,
+      sql: qb.getSql(),
       total,
       page,
       limit,
       totalPages: Math.ceil(total / limit),
     };
   }
+
+  // async search(params: {
+  //   q?: string;
+  //   marcaId?: number;
+  //   modeloId?: number;
+  //   ano?: string;
+  //   page?: number;
+  //   limit?: number;
+  //   order?: 'recent' | 'price_asc' | 'price_desc';
+  // }) {
+  //   const page = Math.max(1, Number(params.page) || 1);
+  //   const limit = Math.min(100, Math.max(1, Number(params.limit) || 12));
+  //   const qb = this.repo
+  //     .createQueryBuilder('v')
+  //     .leftJoinAndSelect('v.marca', 'marca')
+  //     .leftJoinAndSelect('v.modelo', 'modelo')
+  //     .leftJoinAndSelect('v.opcionais', 'vop')
+  //     .leftJoinAndSelect('vop.opcional', 'opcional')
+  //     .leftJoinAndSelect('v.imagens', 'imagens')
+  //     .leftJoinAndSelect('v.vendedores', 'vendedores')
+  //     .where('1=1');
+
+  //   if (params.ano) {
+  //     qb.andWhere('v.modeloAno = :modeloAno or v.fabricacaoAno = :fabricacaoAno', { modeloAno: params.ano, fabricacaoAno: params.ano });
+  //     // qb.andWhere('v.fabricacaoAno = :fabricacaoAno', { fabricacaoAno: params.ano });
+  //   }
+  //   if (params.marcaId) {
+  //     qb.andWhere('marca.id = :marcaId', { marcaId: params.marcaId });
+  //   }
+  //   if (params.modeloId) {
+  //     qb.andWhere('modelo.id = :modeloId', { modeloId: params.modeloId });
+  //   }
+
+  //   if (params.q && params.q.trim()) {
+  //     const q = `%${params.q.trim()}%`;
+  //     qb.andWhere(
+  //       `
+  //       (
+  //         marca.nome LIKE :q OR
+  //         modelo.nome LIKE :q OR
+  //         opcional.nome LIKE :q OR
+
+  //         v.combustivel LIKE :q OR
+  //         v.cambio      LIKE :q OR
+  //         v.tracao      LIKE :q OR
+  //         v.cor         LIKE :q OR
+  //         v.freio       LIKE :q OR
+  //         v.rodas       LIKE :q OR
+  //         v.pneu        LIKE :q OR
+  //         v.tipo        LIKE :q OR
+  //         v.carroceria  LIKE :q OR
+  //         v.tipoVeiculo LIKE :q OR
+  //         v.status      LIKE :q OR
+
+  //         CAST(v.km            AS CHAR) LIKE :q OR
+  //         CAST(v.modeloAno     AS CHAR) LIKE :q OR
+  //         CAST(v.fabricacaoAno AS CHAR) LIKE :q OR
+  //         CAST(v.marchas       AS CHAR) LIKE :q OR
+  //         CAST(v.valor         AS CHAR) LIKE :q
+  //       )
+  //       `,
+  //       { q },
+  //     );
+  //   }
+
+  //   // ordenação
+  //   switch (params.order) {
+  //     case 'price_asc':
+  //       qb.orderBy('v.valor', 'ASC');
+  //       break;
+  //     case 'price_desc':
+  //       qb.orderBy('v.valor', 'DESC');
+  //       break;
+  //     default:
+  //       qb.orderBy('v.criadoEm', 'DESC'); // recent
+  //   }
+
+  //   qb.distinct(true) // evita duplicado por join com opcionais
+  //     .skip((page - 1) * limit)
+  //     .take(limit);
+
+  //   const [rows, total] = await qb.getManyAndCount();
+
+  //   return {
+  //     data: rows,
+  //     sql: qb.getSql,
+  //     total,
+  //     page,
+  //     limit,
+  //     totalPages: Math.ceil(total / limit),
+  //   };
+  // }
+  // async getFilters(params: { marcaId?: number; modeloId?: number }) {
+  //   const { marcaId, modeloId } = params;
+
+  //   // Base para aplicar os mesmos filtros nas consultas
+  //   const baseWhere = this.repo
+  //     .createQueryBuilder('v')
+  //     .leftJoin('v.marca', 'marca')
+  //     .leftJoin('v.modelo', 'modelo')
+  //     .where('1=1');
+
+  //   if (marcaId) baseWhere.andWhere('marca.id = :marcaId', { marcaId });
+  //   if (modeloId) baseWhere.andWhere('modelo.id = :modeloId', { modeloId });
+
+  //   // ----- ANOS (pega min/max entre modeloAno e fabricacaoAno)
+  //   // Estratégia: MIN/MAX coluna a coluna e depois combina em memória
+  //   const agg = await baseWhere
+  //     .clone()
+  //     .select([
+  //       'MIN(v.fabricacaoAno) AS minFab',
+  //       'MIN(v.modeloAno)     AS minMod',
+  //       'MAX(v.fabricacaoAno) AS maxFab',
+  //       'MAX(v.modeloAno)     AS maxMod',
+  //     ])
+  //     .getRawOne<{
+  //       minFab: string | null;
+  //       minMod: string | null;
+  //       maxFab: string | null;
+  //       maxMod: string | null;
+  //     }>();
+
+  //   const minFab = agg?.minFab ? Number(agg.minFab) : Infinity;
+  //   const minMod = agg?.minMod ? Number(agg.minMod) : Infinity;
+  //   const maxFab = agg?.maxFab ? Number(agg.maxFab) : -Infinity;
+  //   const maxMod = agg?.maxMod ? Number(agg.maxMod) : -Infinity;
+
+  //   const minYear = Math.min(minFab, minMod);
+  //   const maxYear = Math.max(maxFab, maxMod);
+
+  //   const anos: number[] =
+  //     Number.isFinite(minYear) && Number.isFinite(maxYear) && minYear <= maxYear
+  //       ? Array.from({ length: maxYear - minYear + 1 }, (_, i) => maxYear - i) // desc
+  //       : [];
+
+  //   // ----- MARCAS (apenas as que têm veículo no conjunto filtrado)
+  //   const marcas = await baseWhere
+  //     .clone()
+  //     .select(['marca.id AS id', 'marca.nome AS nome'])
+  //     .addSelect('COUNT(*)', 'total')
+  //     .andWhere('marca.id IS NOT NULL')
+  //     .groupBy('marca.id, marca.nome')
+  //     .orderBy('marca.nome', 'ASC')
+  //     .getRawMany<{ id: number; nome: string; total: string }>()
+  //     .then(rows => rows.map(r => ({ id: Number(r.id), nome: r.nome, total: Number(r.total) })));
+
+  //   // ----- MODELOS (apenas os que têm veículo; pode filtrar por marca)
+  //   const modelosQB = baseWhere
+  //     .clone()
+  //     .select(['modelo.id AS id', 'modelo.nome AS nome', 'marca.id AS marcaId'])
+  //     .addSelect('COUNT(*)', 'total')
+  //     .andWhere('modelo.id IS NOT NULL')
+  //     .groupBy('modelo.id, modelo.nome, marca.id')
+  //     .orderBy('modelo.nome', 'ASC');
+
+
+  //   const modelos = await modelosQB
+  //     .getRawMany<{ id: number; nome: string; marcaId: number; total: string }>()
+  //     .then(rows =>
+  //       rows.map(r => ({
+  //         id: Number(r.id),
+  //         nome: r.nome,
+  //         marcaId: Number(r.marcaId),
+  //         total: Number(r.total),
+  //       })),
+  //     );
+
+  //   return {
+  //     marcas,          // [{ id, nome, total }]
+  //     modelos,         // [{ id, nome, marcaId, total }]
+  //     anos,            // [2025, 2024, ...]
+  //     minYear: Number.isFinite(minYear) ? minYear : null,
+  //     maxYear: Number.isFinite(maxYear) ? maxYear : null,
+  //   };
+  // }
   async getFilters(params: { marcaId?: number; modeloId?: number }) {
     const { marcaId, modeloId } = params;
 
-    // Base para aplicar os mesmos filtros nas consultas
+    // Base: aplica os mesmos filtros nas consultas
     const baseWhere = this.repo
       .createQueryBuilder('v')
       .leftJoin('v.marca', 'marca')
@@ -282,8 +460,7 @@ export class VeiculoService {
     if (marcaId) baseWhere.andWhere('marca.id = :marcaId', { marcaId });
     if (modeloId) baseWhere.andWhere('modelo.id = :modeloId', { modeloId });
 
-    // ----- ANOS (pega min/max entre modeloAno e fabricacaoAno)
-    // Estratégia: MIN/MAX coluna a coluna e depois combina em memória
+    // ----- ANOS (min/max entre modeloAno e fabricacaoAno)
     const agg = await baseWhere
       .clone()
       .select([
@@ -309,10 +486,10 @@ export class VeiculoService {
 
     const anos: number[] =
       Number.isFinite(minYear) && Number.isFinite(maxYear) && minYear <= maxYear
-        ? Array.from({ length: maxYear - minYear + 1 }, (_, i) => maxYear - i) // desc
+        ? Array.from({ length: maxYear - minYear + 1 }, (_, i) => maxYear - i)
         : [];
 
-    // ----- MARCAS (apenas as que têm veículo no conjunto filtrado)
+    // ----- MARCAS (apenas as que t�m ve�culo no conjunto filtrado)
     const marcas = await baseWhere
       .clone()
       .select(['marca.id AS id', 'marca.nome AS nome'])
@@ -323,32 +500,43 @@ export class VeiculoService {
       .getRawMany<{ id: number; nome: string; total: string }>()
       .then(rows => rows.map(r => ({ id: Number(r.id), nome: r.nome, total: Number(r.total) })));
 
-    // ----- MODELOS (apenas os que têm veículo; pode filtrar por marca)
-    const modelosQB = baseWhere
+    // ----- MODELOS (apenas os que t�m ve�culo; respeita filtros de marca/modelo)
+    const modelos = await baseWhere
       .clone()
       .select(['modelo.id AS id', 'modelo.nome AS nome', 'marca.id AS marcaId'])
       .addSelect('COUNT(*)', 'total')
       .andWhere('modelo.id IS NOT NULL')
       .groupBy('modelo.id, modelo.nome, marca.id')
-      .orderBy('modelo.nome', 'ASC');
-
-    const modelos = await modelosQB
+      .orderBy('modelo.nome', 'ASC')
       .getRawMany<{ id: number; nome: string; marcaId: number; total: string }>()
-      .then(rows =>
-        rows.map(r => ({
-          id: Number(r.id),
-          nome: r.nome,
-          marcaId: Number(r.marcaId),
-          total: Number(r.total),
-        })),
-      );
+      .then(rows => rows.map(r => ({
+        id: Number(r.id),
+        nome: r.nome,
+        marcaId: Number(r.marcaId),
+        total: Number(r.total),
+      })));
+
+    // ----- OPCIONAIS (N:N): conta ve�culos DISTINTOS por opcional
+    const opcionais = await baseWhere
+      .clone()
+      .leftJoin('v.opcionais', 'vop')          // VeiculoOpcional
+      .leftJoin('vop.opcional', 'opcional')    // Opcional
+      .select(['opcional.id AS id', 'opcional.nome AS nome'])
+      .addSelect('COUNT(DISTINCT v.id)', 'total')
+      .andWhere('opcional.id IS NOT NULL')
+      .groupBy('opcional.id, opcional.nome')
+      .orderBy('opcional.nome', 'ASC')
+      .getRawMany<{ id: number; nome: string; total: string }>()
+      .then(rows => rows.map(r => ({ id: Number(r.id), nome: r.nome, total: Number(r.total) })));
 
     return {
       marcas,          // [{ id, nome, total }]
       modelos,         // [{ id, nome, marcaId, total }]
+      opcionais,       // [{ id, nome, total }]  <- novo
       anos,            // [2025, 2024, ...]
       minYear: Number.isFinite(minYear) ? minYear : null,
       maxYear: Number.isFinite(maxYear) ? maxYear : null,
     };
   }
+
 }

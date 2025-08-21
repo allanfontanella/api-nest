@@ -15,7 +15,7 @@ function decorateVeiculo(v: any, req: any) {
 
 @Controller('veiculos')
 export class VeiculoController {
-  constructor(private service: VeiculoService) {}
+  constructor(private service: VeiculoService) { }
 
   @UseGuards(JwtAuthGuard)
   @Post()
@@ -52,6 +52,7 @@ export class VeiculoController {
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('order') order?: 'recent' | 'price_asc' | 'price_desc',
+    @Query('opcionaisIds') opcionaisIds?: string,   // <<< novo
     @Req() req?: any,
   ) {
     const result = await this.service.search({
@@ -62,6 +63,9 @@ export class VeiculoController {
       page: page ? Number(page) : undefined,
       limit: limit ? Number(limit) : undefined,
       order,
+      opcionaisIds: opcionaisIds
+        ? opcionaisIds.split(',').map(id => Number(id.trim())).filter(n => !Number.isNaN(n))
+        : undefined,
     });
 
     return {
@@ -69,6 +73,32 @@ export class VeiculoController {
       data: result.data.map(v => decorateVeiculo(v, req)),
     };
   }
+  // @Get('buscar')
+  // async buscar(
+  //   @Query('q') q: string | undefined,
+  //   @Query('marcaId') marcaId?: string,
+  //   @Query('modeloId') modeloId?: string,
+  //   @Query('ano') ano?: string | undefined,
+  //   @Query('page') page?: string,
+  //   @Query('limit') limit?: string,
+  //   @Query('order') order?: 'recent' | 'price_asc' | 'price_desc',
+  //   @Req() req?: any,
+  // ) {
+  //   const result = await this.service.search({
+  //     q,
+  //     marcaId: marcaId ? Number(marcaId) : undefined,
+  //     modeloId: modeloId ? Number(modeloId) : undefined,
+  //     ano: ano ? ano : undefined,
+  //     page: page ? Number(page) : undefined,
+  //     limit: limit ? Number(limit) : undefined,
+  //     order,
+  //   });
+
+  //   return {
+  //     ...result,
+  //     data: result.data.map(v => decorateVeiculo(v, req)),
+  //   };
+  // }
 
   @Get(':id')
   async get(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
