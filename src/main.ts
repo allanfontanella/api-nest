@@ -15,7 +15,7 @@ async function bootstrap() {
     host: process.env.DB_HOST,
     port: process.env.DB_PORT,
     user: process.env.DB_USER,
-    db:   process.env.DB_NAME,
+    db: process.env.DB_NAME,
     pass: process.env.DB_PASS,
     passLen: (process.env.DB_PASS ?? '').length,
     passTail: (process.env.DB_PASS ?? '').slice(-2), // só os 2 últimos chars
@@ -39,7 +39,7 @@ async function bootstrap() {
     credentials: true, // só deixe true se você realmente precisa enviar cookies/autenticação cross-site
     maxAge: 86400,     // cache do preflight
   });
-
+  app.setGlobalPrefix(process.env.PREFIX ?? '');
   await app.listen(process.env.PORT ? Number(process.env.PORT) : 3000);
 }
 bootstrap();
