@@ -52,9 +52,10 @@ function validateEnv(config: Record<string, unknown>) {
     DB_NAME: required('DB_NAME'),
     DB_SYNC: toBool('DB_SYNC', false),
     DB_CHARSET: get('DB_CHARSET', 'utf8mb4'),
-    UPLOADS_DIR: get('UPLOADS_DIR', 'uploads'),
-    SERVE_ROOT: get('SERVE_ROOT', '/uploads'),
-    MAIL_HOST: get('MAIL_HOST',''),
+    UPLOADS_DIR: get('UPLOADS_DIR', 'img'),
+    SERVE_ROOT: get('SERVE_ROOT', '/img'),
+    PREFIX: get('PREFIX', 'api'),
+    MAIL_HOST: get('MAIL_HOST', ''),
   };
 }
 
@@ -112,17 +113,35 @@ function validateEnv(config: Record<string, unknown>) {
       }),
     }),
 
+    // ServeStaticModule.forRootAsync({
+    //   inject: [ConfigService],
+    //   useFactory: (cfg: ConfigService) => ([
+    //     {
+    //       rootPath: join(process.cwd(), cfg.get<string>('UPLOADS_DIR')!),
+    //       serveRoot: cfg.get<string>('SERVE_ROOT'),
+    //     },
+    //   ]),
+    // }),
+
     ServeStaticModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: (cfg: ConfigService) => ([
-        {
-          rootPath: join(process.cwd(), cfg.get<string>('UPLOADS_DIR')!),
-          serveRoot: cfg.get<string>('SERVE_ROOT'),
-        },
-      ]),
+      useFactory: (cfg: ConfigService) => {
+        const uploadsDir = cfg.get<string>('UPLOADS_DIR') ?? 'img'; // pasta no disco
+        const prefix = (cfg.get<string>('PREFIX') ?? '').replace(/^\/|\/$/g, ''); // "api"
+        // URL final: /api/img/...
+        const serveRoot = `/${[prefix, 'img'].filter(Boolean).join('/')}`;
+
+        return [
+          {
+            rootPath: join(process.cwd(), uploadsDir), // ex.: /home/user/app/img
+            serveRoot,                                 // ex.: /api/img
+            serveStaticOptions: { index: false },
+          },
+        ];
+      },
     }),
 
-    
+
     CarrosselModule,
     DepoimentoModule,
     UsersModule,
@@ -134,4 +153,4 @@ function validateEnv(config: Record<string, unknown>) {
   ],
 })
 
-export class AppModule {}
+export class AppModule { }

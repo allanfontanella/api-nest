@@ -5,7 +5,7 @@ import { Carrossel } from './carrossel.entity';
 
 @Injectable()
 export class CarrosselService {
-  constructor(@InjectRepository(Carrossel) private repo: Repository<Carrossel>) {}
+  constructor(@InjectRepository(Carrossel) private repo: Repository<Carrossel>) { }
 
   create(data: Partial<Carrossel>) {
     return this.repo.save(this.repo.create(data));

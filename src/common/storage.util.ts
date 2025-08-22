@@ -32,24 +32,26 @@ export async function saveBase64Image(
   // Tamanho aproximado de base64 em bytes
   const estimatedBytes = Math.floor(base64.length * 3 / 4);
   if (estimatedBytes > maxBytes) {
-    throw new Error(`Imagem excede ${Math.floor(maxBytes/1024/1024)}MB.`);
+    throw new Error(`Imagem excede ${Math.floor(maxBytes / 1024 / 1024)}MB.`);
   }
 
   const ext =
     mime.includes('jpeg') || mime.includes('jpg') ? 'jpg' :
-    mime.includes('png')  ? 'png' :
-    mime.includes('webp') ? 'webp' :
-    mime.includes('gif')  ? 'gif' : 'bin';
+      mime.includes('png') ? 'png' :
+        mime.includes('webp') ? 'webp' :
+          mime.includes('gif') ? 'gif' : 'bin';
 
   const fileName = `${Date.now()}-${randomUUID()}.${ext}`;
-  const destDir = join(process.cwd(), 'uploads', subfolder);
+  let destDir = join(process.cwd(), process.env.UPLOADS_DIR ?? 'uploads', subfolder);
   await fs.mkdir(destDir, { recursive: true });
 
   const buffer = Buffer.from(base64, 'base64');
   const absolutePath = join(destDir, fileName);
   await fs.writeFile(absolutePath, buffer);
+  let publicPath = `/${process.env.UPLOADS_DIR ?? 'uploads'}/${subfolder}/${fileName}`;
+  if (process.env.PREFIX) {
+    publicPath = `/${process.env.PREFIX}${publicPath}`;
+  }
 
-  // Caminho público (por causa do ServeStatic acima)
-  const publicPath = `/uploads/${subfolder}/${fileName}`;
   return { absolutePath, publicPath, fileName };
 }

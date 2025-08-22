@@ -15,7 +15,7 @@ export class VeiculoImagemController {
     @InjectRepository(VeiculoImagem) private imgs: Repository<VeiculoImagem>,
     @InjectRepository(Veiculo) private veiculos: Repository<Veiculo>,
     // private cfg: ConfigService, // se usar @nestjs/config
-  ) {}
+  ) { }
 
   @Get()
   async list(@Param('id', ParseIntPipe) id: number, @Req() req: any) {
@@ -24,14 +24,14 @@ export class VeiculoImagemController {
   }
 
   @Post()
-async add(@Param('id', ParseIntPipe) id: number, @Req() req: any, @Body() body: any) {
+  async add(@Param('id', ParseIntPipe) id: number, @Req() req: any, @Body() body: any) {
     const veiculo = await this.veiculos.findOne({ where: { id } });
     if (!veiculo) throw new BadRequestException('Veículo inválido');
 
-    let url = body.url; // ideal que seja um caminho relativo tipo /uploads/...
+    let url = body.url;
     if (!url && body.imagemBase64) {
       const { publicPath } = await saveBase64Image(body.imagemBase64, { subfolder: `veiculos/${id}` });
-      url = publicPath; // ex: /uploads/veiculos/1/abcd.png
+      url = publicPath;
     }
     if (!url) throw new BadRequestException('Informe url ou imagemBase64');
 
