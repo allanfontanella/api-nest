@@ -88,30 +88,31 @@ function validateEnv(config: Record<string, unknown>) {
       }),
     }),
 
-    MailerModule.forRootAsync({
-      inject: [ConfigService],
-      useFactory: (cfg: ConfigService) => ({
-        transport: {
-          host: cfg.get<string>('MAIL_HOST'),
-          port: Number(cfg.get<string>('MAIL_PORT') ?? 587),
-          secure: cfg.get<string>('MAIL_SECURE'), // true se porta 465
-          auth: {
-            user: cfg.get<string>('MAIL_USER'),
-            pass: cfg.get<string>('MAIL_PASS'),
-          },
-          logger: true, // mostra no console qual host/porta está usando
-          debug: true,
-        },
-        defaults: {
-          from: cfg.get<string>('MAIL_FROM'),
-        },
-        template: {
-          dir: __dirname + '/templates',
-          adapter: new HandlebarsAdapter(),
-          options: { strict: true },
-        },
-      }),
-    }),
+    // MailerModule.forRootAsync({
+    //   inject: [ConfigService],
+    //   useFactory: (cfg: ConfigService) => ({
+    //     transport: {
+    //       host: cfg.get<string>('MAIL_HOST'),
+    //       port: 587,
+    //       secure: false, // true se porta 465
+    //       auth: {
+    //         user: cfg.get<string>('MAIL_USER'),
+    //         pass: cfg.get<string>('MAIL_PASS'),
+    //       },
+    //       logger: true, // mostra no console qual host/porta está usando
+    //       debug: true,
+    //       ignoreTLS: true,
+    //     },
+    //     defaults: {
+    //       from: cfg.get<string>('MAIL_FROM'),
+    //     },
+    //     template: {
+    //       dir: __dirname + '/templates',
+    //       adapter: new HandlebarsAdapter(),
+    //       options: { strict: true },
+    //     },
+    //   }),
+    // }),
 
     // ServeStaticModule.forRootAsync({
     //   inject: [ConfigService],
